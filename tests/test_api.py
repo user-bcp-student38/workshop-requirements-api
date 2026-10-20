@@ -38,6 +38,31 @@ def test_creates_task_and_summary(tmp_path: Path) -> None:
     assert summary.json()["total"] == 3
 
 
+def test_task_values_with_apostrophes_are_stored_and_filterable(tmp_path: Path) -> None:
+    app = create_app(str(tmp_path / "workshop.db"), str(tmp_path / "uploads"))
+    task_owner = "owner's workspace"
+    task_data = {
+        "title": "Review user's requirements",
+        "description": "Check parser's behavior",
+        "owner": task_owner,
+    }
+
+    with TestClient(app) as client:
+        created = client.post("/api/tasks", headers=headers(), json=task_data)
+        listed = client.get("/api/tasks", headers=headers(), params={"owner": task_owner})
+        summary = client.get("/api/summary", headers=headers(), params={"owner": task_owner})
+
+    assert created.status_code == 201
+    assert created.json()["title"] == task_data["title"]
+    assert created.json()["description"] == task_data["description"]
+    assert created.json()["owner"] == task_owner
+    assert listed.status_code == 200
+    assert listed.json() == [created.json()]
+    assert summary.status_code == 200
+    assert summary.json()["owner"] == task_owner
+    assert summary.json()["total"] == 1
+
+
 def test_uploads_requirement(tmp_path: Path) -> None:
     upload_dir = tmp_path / "uploads"
     app = create_app(str(tmp_path / "workshop.db"), str(upload_dir))
